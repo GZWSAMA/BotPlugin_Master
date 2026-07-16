@@ -1,0 +1,33 @@
+{
+  "enabled": true,
+  "timezone": "Asia/Shanghai",
+  "schedule_time": "14:00",
+  "zotero": {
+    "library_type": "user",
+    "user_id": "YOUR_ZOTERO_USER_ID",
+    "group_id": "",
+    "api_key": "",
+    "collection_keys": [],
+    "max_items": 400
+  },
+  "arxiv": {
+    "categories": ["cs.AI", "cs.CL", "cs.LG", "cs.CV", "stat.ML"],
+    "query_extra": "",
+    "max_results": 120,
+    "days_back": 1,
+    "fallback_lookback_days": 5
+  },
+  "matching": {
+    "max_papers": 8,
+    "min_score": 2.0,
+    "profile_terms": 80
+  },
+  "llm": {
+    "provider_id": "",
+    "max_prompt_chars": 18000
+  },
+  "send": {
+    "sessions": [],
+    "max_message_chars": 3500
+  }
+}

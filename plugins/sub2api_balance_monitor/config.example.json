@@ -1,0 +1,34 @@
+{
+  "enabled": true,
+  "check_interval_seconds": 600,
+  "alert_repeat_seconds": 7200,
+  "threshold": 2.0,
+  "recovered_threshold": 2.5,
+  "recharge_url": "",
+  "recharge_urls": {
+    "openai": "https://example.com/topup"
+  },
+  "http_timeout_seconds": 10,
+  "db": {
+    "host": "postgres",
+    "port": 5432,
+    "user": "sub2api",
+    "password": "",
+    "database": "sub2api"
+  },
+  "newapi_token_upstreams": ["openai"],
+  "skip_upstreams": [],
+  "rate_monitor_enabled": true,
+  "ratio_watch": {
+    "site_types": {
+      "openai": "newapi"
+    },
+    "newapi_auth": {
+      "openai": {
+        "access_token": "",
+        "user_id": ""
+      }
+    },
+    "sub2api_auth": {}
+  }
+}

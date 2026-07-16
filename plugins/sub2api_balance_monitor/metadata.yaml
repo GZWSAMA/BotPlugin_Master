@@ -1,0 +1,4 @@
+name: sub2api_balance_monitor
+desc: Monitor enabled sub2api upstream channel balances and send low-balance alerts
+version: 0.1.0
+author: Codex
