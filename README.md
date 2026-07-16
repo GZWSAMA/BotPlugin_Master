@@ -54,3 +54,6 @@ cp -r BotPlugin_Master/plugins/sub2api_balance_monitor /opt/AstrBot/data/plugins
 rg -n --hidden -S "(api[_-]?key|token|secret|password|Authorization|Bearer|sk-[A-Za-z0-9])" .
 ```
 
+## License
+
+MIT License. See `LICENSE`.
