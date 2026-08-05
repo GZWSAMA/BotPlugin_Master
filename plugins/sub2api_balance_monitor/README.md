@@ -1,49 +1,51 @@
-# sub2api 渠道余额与倍率监控插件
+# sub2api Balance and Multiplier Monitor
 
 ![Operations](https://img.shields.io/badge/OPERATIONS-0284C7?style=flat-square)
 ![Source: PostgreSQL](https://img.shields.io/badge/Source-PostgreSQL-0F766E?style=flat-square)
 ![Alerts: AstrBot](https://img.shields.io/badge/Alerts-AstrBot-16A34A?style=flat-square)
 
-> 面向自托管渠道的运营可观测性：用余额阈值和倍率变化把需要处理的上游风险转成 AstrBot 告警。
+**English** · [中文](README.zh-CN.md)
 
-从 sub2api PostgreSQL 数据库读取启用账号，按账号命名规则识别上游渠道，定时检查余额并发送低余额告警。同时支持读取 New API/sub2api 分组倍率，发现倍率、分组或描述变化时推送提醒。
+> Operational observability for self-hosted channels: turn balance thresholds and multiplier changes into actionable AstrBot alerts.
 
-## 功能
+The plugin reads enabled accounts from the sub2api PostgreSQL database, identifies upstream channels from account names, checks balances on a schedule, and sends low-balance alerts. It can also read New API/sub2api group multipliers and notify when a multiplier, group, or description changes.
 
-- 从数据库读取 `accounts`、账号分组和账号备注
-- 按账号名 `<上游>-<分组>` 识别上游渠道
-- 支持 sub2api `/v1/usage` 余额接口
-- 支持 New API token 用量接口和 OpenAI billing fallback
-- 支持跳过指定上游、指定 New API token 上游
-- 支持余额低于阈值告警、恢复阈值和重复告警间隔
-- 支持 New API/sub2api 分组倍率变化监控
-- 支持绑定多个 AstrBot 会话接收告警
+## Capabilities
 
-## 安装
+- Reads `accounts`, account groups, and account remarks from the database.
+- Identifies an upstream channel from the account name format `<upstream>-<group>`.
+- Supports the sub2api `/v1/usage` balance endpoint.
+- Supports New API token usage and the OpenAI billing fallback.
+- Can skip selected upstreams or designate upstreams that use New API token balance logic.
+- Supports low-balance thresholds, recovery thresholds, and alert-repeat intervals.
+- Monitors New API/sub2api group multiplier changes.
+- Binds multiple AstrBot sessions as alert recipients.
 
-把本目录复制到 AstrBot 插件目录：
+## Installation
+
+Copy this directory into the AstrBot plugin directory:
 
 ```bash
 cp -r plugins/sub2api_balance_monitor /opt/AstrBot/data/plugins/
 ```
 
-安装依赖：
+Install the dependencies in the AstrBot environment:
 
 ```bash
-pip install -r /opt/AstrBot/data/plugins/sub2api_balance_monitor/requirements.txt
+python -m pip install -r /opt/AstrBot/data/plugins/sub2api_balance_monitor/requirements.txt
 ```
 
-如果 AstrBot 运行在容器中，请在容器内安装依赖，或把依赖写入镜像/启动脚本。
+When AstrBot runs in a container, install the dependencies inside that container or add them to the image or startup script.
 
-重启 AstrBot 后，插件会生成：
+After AstrBot restarts, the plugin creates:
 
 ```text
 /opt/AstrBot/data/plugin_data/sub2api_balance_monitor/config.json
 ```
 
-## 数据库连接
+## Database Connection
 
-推荐用环境变量提供数据库密码，避免把密码写入 `config.json`：
+Prefer environment variables for the database password so it is not written to `config.json`:
 
 ```bash
 export SUB2API_DB_HOST=postgres
@@ -53,19 +55,19 @@ export SUB2API_DB_PASSWORD='YOUR_DB_PASSWORD'
 export SUB2API_DB_NAME=sub2api
 ```
 
-插件启动时会优先读取上述环境变量。为了避免泄露，插件保存配置时会把 `db.password` 写回为空字符串。
+The plugin reads these environment variables first. To limit accidental disclosure, it writes `db.password` back as an empty string when saving configuration.
 
-如果你确认运行环境安全，也可以在 AstrBot 运行配置里填写 `db.password`，但不要提交到 Git。
+When the runtime environment is controlled, `db.password` can also be set in AstrBot runtime configuration. Never commit it to Git.
 
-## 账号命名约定
+## Account Naming Convention
 
-插件只监控满足以下格式的启用账号：
+The plugin monitors only enabled accounts whose names follow this format:
 
 ```text
-<上游>-<分组>
+<upstream>-<group>
 ```
 
-示例：
+Examples:
 
 ```text
 openai-default
@@ -73,40 +75,38 @@ openai-premium
 claude-main
 ```
 
-`-` 前面的部分会被当作上游名称，低余额告警以同一上游下账号余额的最小值为准。
+The segment before `-` is treated as the upstream name. Low-balance alerts use the minimum account balance for that upstream.
 
-## 配置
+## Configuration
 
-参考 `config.example.json`，修改 AstrBot 运行目录下的：
+Use `config.example.json` as a reference and edit:
 
 ```text
 /opt/AstrBot/data/plugin_data/sub2api_balance_monitor/config.json
 ```
 
-关键字段：
-
-| 字段 | 说明 |
+| Field | Description |
 | --- | --- |
-| `enabled` | 是否启用定时监控 |
-| `check_interval_seconds` | 检查间隔，最低实际间隔 60 秒 |
-| `alert_repeat_seconds` | 同一上游重复低余额告警间隔 |
-| `threshold` | 低余额阈值，单位 USD |
-| `recovered_threshold` | 恢复阈值，余额达到该值后清除低余额状态 |
-| `recharge_url` | 默认充值链接 |
-| `recharge_urls` | 按上游覆盖充值链接 |
-| `db` | sub2api PostgreSQL 连接信息 |
-| `newapi_token_upstreams` | 使用 New API token 余额逻辑的上游名 |
-| `skip_upstreams` | 跳过余额探测的上游名 |
-| `rate_monitor_enabled` | 是否启用分组倍率监控 |
-| `ratio_watch.site_types` | 指定上游或站点类型：`newapi`/`sub2api` |
-| `ratio_watch.newapi_auth` | New API 倍率接口所需认证 |
-| `ratio_watch.sub2api_auth` | sub2api 倍率接口所需认证 |
+| `enabled` | Enables scheduled monitoring. |
+| `check_interval_seconds` | Check interval; the effective minimum is 60 seconds. |
+| `alert_repeat_seconds` | Repeat interval for a low-balance alert from the same upstream. |
+| `threshold` | Low-balance threshold in USD. |
+| `recovered_threshold` | Balance that clears the low-balance state. |
+| `recharge_url` | Default top-up URL. |
+| `recharge_urls` | Per-upstream top-up URL overrides. |
+| `db` | sub2api PostgreSQL connection settings. |
+| `newapi_token_upstreams` | Upstream names that use New API token balance logic. |
+| `skip_upstreams` | Upstream names excluded from balance probing. |
+| `rate_monitor_enabled` | Enables group multiplier monitoring. |
+| `ratio_watch.site_types` | Explicit upstream or site type: `newapi` or `sub2api`. |
+| `ratio_watch.newapi_auth` | Authentication required by New API multiplier endpoints. |
+| `ratio_watch.sub2api_auth` | Authentication required by sub2api multiplier endpoints. |
 
-## 倍率监控认证
+## Multiplier Monitoring Authentication
 
 ### New API
 
-公开 `/api/user/groups` 可访问时无需配置认证。如果站点要求登录态，可按上游名或根 URL 配置：
+No authentication is required when the public `/api/user/groups` endpoint is accessible. If the site requires a login session, configure it by upstream name or root URL:
 
 ```json
 {
@@ -126,7 +126,7 @@ claude-main
 
 ### sub2api
 
-插件会优先尝试从账号备注读取登录凭据：备注第一行写用户名/邮箱，第二行写密码。也可以在配置中指定站点类型，避免误判：
+The plugin first attempts to read login credentials from account remarks: the first line is the username or email and the second line is the password. You can also declare a site type in configuration to avoid a misclassification:
 
 ```json
 {
@@ -138,9 +138,9 @@ claude-main
 }
 ```
 
-如果你选择在配置里维护 token 或账号密码，请只写在 AstrBot 运行配置中，不要提交到 Git。
+If you maintain tokens or account credentials in configuration, keep them only in AstrBot runtime configuration and never commit them to Git.
 
-## 命令
+## Commands
 
 ```text
 渠道监控 状态
@@ -152,17 +152,17 @@ claude-main
 渠道监控 测试
 ```
 
-别名：
+Aliases:
 
 ```text
 余额监控
 sub2api_balance
 ```
 
-## 常见问题
+## Troubleshooting
 
-- 没有告警接收方：在目标群/私聊发送 `渠道监控 绑定`。
-- 数据库连接失败：检查 `SUB2API_DB_*` 环境变量、网络和数据库权限。
-- 账号没有出现在列表里：确认账号启用、未删除、可调度，并且账号名包含 `-`。
-- 某些上游不支持余额接口：加入 `skip_upstreams`，或按需要加入 `newapi_token_upstreams`。
-- 倍率监控显示跳过：通常是缺少登录凭据，或站点接口需要认证。
+- No alert recipient: send `渠道监控 绑定` in the target group or direct message.
+- Database connection failed: check the `SUB2API_DB_*` environment variables, network access, and database permissions.
+- An account is absent from the list: confirm that it is enabled, not deleted, schedulable, and named with `-`.
+- An upstream does not support a balance endpoint: add it to `skip_upstreams` or, when appropriate, `newapi_token_upstreams`.
+- Multiplier monitoring is skipped: the site usually requires login credentials or an authenticated endpoint.
