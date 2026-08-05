@@ -1,0 +1,10 @@
+{
+  "enabled": true,
+  "sessions_root": "~/.codex/sessions",
+  "target_umo": "qq_official:FriendMessage:<user_openid>",
+  "poll_interval": 3.0,
+  "process_grace_seconds": 20.0,
+  "notify_task_complete": true,
+  "notify_unexpected_stop": true,
+  "ignore_human_interrupt": true
+}

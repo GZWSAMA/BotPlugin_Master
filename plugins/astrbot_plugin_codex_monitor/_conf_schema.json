@@ -1,0 +1,10 @@
+{
+  "enabled": {"type": "bool", "description": "Enable Codex monitoring.", "default": true},
+  "sessions_root": {"type": "string", "description": "Codex rollout session root. The default expands to the current user's ~/.codex/sessions.", "default": "~/.codex/sessions"},
+  "target_umo": {"type": "string", "description": "AstrBot unified message origin used for notifications. Leave empty to disable notifications until configured.", "default": ""},
+  "poll_interval": {"type": "float", "description": "Polling interval in seconds.", "default": 3.0},
+  "process_grace_seconds": {"type": "float", "description": "Grace period before reporting a vanished Codex process.", "default": 20.0},
+  "notify_task_complete": {"type": "bool", "description": "Notify when a task_complete event is recorded.", "default": true},
+  "notify_unexpected_stop": {"type": "bool", "description": "Notify on abnormal abort events or vanished Codex processes.", "default": true},
+  "ignore_human_interrupt": {"type": "bool", "description": "Ignore turn_aborted events whose reason is interrupted.", "default": true}
+}

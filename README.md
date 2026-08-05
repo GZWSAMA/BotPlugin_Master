@@ -6,6 +6,7 @@
 | --- | --- | --- |
 | Zotero arXiv 日报 | 根据 Zotero 文献库画像匹配 arXiv 新论文，并用 AstrBot 配置的 LLM 生成中文论文日报 | `plugins/zotero_arxiv_digest` |
 | sub2api 渠道余额与倍率监控 | 从 sub2api 数据库读取启用账号，监控上游余额、低余额告警和 New API/sub2api 分组倍率变化 | `plugins/sub2api_balance_monitor` |
+| Codex CLI 任务监控 | 读取本机 Codex rollout 事件，通知任务完成、异常结束和疑似进程消失 | `plugins/astrbot_plugin_codex_monitor` |
 
 ## 安装方式
 
@@ -17,6 +18,7 @@
 git clone git@github.com:GZWSAMA/BotPlugin_Master.git
 cp -r BotPlugin_Master/plugins/zotero_arxiv_digest /opt/AstrBot/data/plugins/
 cp -r BotPlugin_Master/plugins/sub2api_balance_monitor /opt/AstrBot/data/plugins/
+cp -r BotPlugin_Master/plugins/astrbot_plugin_codex_monitor /opt/AstrBot/data/plugins/
 ```
 
 2. 只下载单个插件目录，然后放到：
@@ -25,18 +27,21 @@ cp -r BotPlugin_Master/plugins/sub2api_balance_monitor /opt/AstrBot/data/plugins
 /opt/AstrBot/data/plugins/<插件目录名>
 ```
 
-安装后重启 AstrBot。首次启动插件会在 AstrBot 数据目录下自动生成运行配置：
+安装后重启 AstrBot。带有 `_conf_schema.json` 的插件会在 AstrBot 数据目录下自动生成运行配置：
 
 ```text
-/opt/AstrBot/data/plugin_data/<插件名>/config.json
+/opt/AstrBot/data/config/<插件名>_config.json
 ```
+
+插件运行状态通常保存在 `/opt/AstrBot/data/plugin_data/<插件名>/`，具体路径以插件 README 为准。
 
 ## 配置教程
 
 - Zotero arXiv 日报：见 `plugins/zotero_arxiv_digest/README.md`
 - sub2api 渠道余额与倍率监控：见 `plugins/sub2api_balance_monitor/README.md`
+- Codex CLI 任务监控：见 `plugins/astrbot_plugin_codex_monitor/README.md`
 
-每个插件目录都提供了 `config.example.json`。请把示例内容按需复制到 AstrBot 自动生成的 `plugin_data/<插件名>/config.json` 中修改，不要把真实 `config.json` 提交到 Git。
+每个插件目录都提供了 `config.example.json`。请把示例内容按需复制到 AstrBot 自动生成的 `data/config/<插件名>_config.json` 中修改，不要把真实配置、运行状态或凭据提交到 Git。
 
 ## 安全说明
 
@@ -53,6 +58,8 @@ cp -r BotPlugin_Master/plugins/sub2api_balance_monitor /opt/AstrBot/data/plugins
 ```bash
 rg -n --hidden -S "(api[_-]?key|token|secret|password|Authorization|Bearer|sk-[A-Za-z0-9])" .
 ```
+
+Codex CLI 任务监控插件还会读取本机 rollout 日志；这些日志可能含有提示词、工具参数、路径和最终回复。仓库只提交脱敏配置模板，不提交真实 UMO、rollout JSONL、AstrBot `data/` 目录或插件状态文件。
 
 ## License
 
