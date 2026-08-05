@@ -1,5 +1,11 @@
 # Zotero arXiv 日报插件
 
+![Research](https://img.shields.io/badge/RESEARCH-6D5EF7?style=flat-square)
+![Sources: Zotero + arXiv](https://img.shields.io/badge/Sources-Zotero_%2B_arXiv-B91C1C?style=flat-square)
+![Output: Chinese Digest](https://img.shields.io/badge/Output-Chinese_Digest-2563EB?style=flat-square)
+
+> 把个人 Zotero 研究脉络变成每日可读的 arXiv 发现流，减少无关检索，保留可配置的筛选边界。
+
 根据 Zotero 文献库中的论文标题、摘要和标签构建兴趣画像，查询指定 arXiv 分类在目标日期的新论文，筛选相关论文后调用 AstrBot 当前 LLM 生成中文日报。
 
 ## 功能
@@ -83,4 +89,3 @@ zotero_arxiv
 - 提示缺少 `zotero.group_id`：`library_type=group` 时必须填写 group id。
 - 没有自动推送：先在目标群/私聊发送 `论文推送 绑定`，或手动填写 `send.sessions`。
 - LLM 摘要失败：检查 AstrBot 默认 LLM provider，或在 `llm.provider_id` 中指定 provider。
-

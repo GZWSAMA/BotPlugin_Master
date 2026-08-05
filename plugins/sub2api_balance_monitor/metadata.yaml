@@ -1,4 +1,6 @@
 name: sub2api_balance_monitor
-desc: Monitor enabled sub2api upstream channel balances and send low-balance alerts
+display_name: sub2api 渠道余额与倍率监控
+desc: Monitors enabled sub2api upstream accounts, balance thresholds, and New API/sub2api group-rate changes, then delivers actionable AstrBot alerts.
+short_desc: Operational visibility for upstream balances and group multipliers.
 version: 0.1.0
-author: Codex
+author: GZWSAMA

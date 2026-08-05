@@ -1,4 +1,6 @@
 name: zotero_arxiv_digest
-desc: Daily Zotero-informed arXiv recommendation digest
+display_name: Zotero arXiv 日报
+desc: Builds a research-interest profile from Zotero and delivers a relevance-ranked Chinese arXiv digest through AstrBot.
+short_desc: Personalized arXiv discovery from your Zotero library.
 version: 0.1.0
-author: Codex
+author: GZWSAMA

@@ -1,7 +1,7 @@
 name: astrbot_plugin_codex_monitor
 display_name: Codex 任务监控
-desc: Monitors local Codex CLI rollout events and sends completion or abnormal-stop notifications through AstrBot.
-short_desc: Codex CLI completion and abnormal-stop notifications.
+desc: Monitors local Codex CLI rollout events and delivers explicit completion or abnormal-stop notifications through AstrBot.
+short_desc: Auditable Codex task completion and failure alerts.
 version: 0.1.0
 author: GZWSAMA
 support_platforms:

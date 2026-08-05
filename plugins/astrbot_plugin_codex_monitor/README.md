@@ -1,5 +1,11 @@
 # Codex CLI 任务监控插件
 
+![Agent Ops](https://img.shields.io/badge/AGENT_OPS-F97316?style=flat-square)
+![Input: Local JSONL](https://img.shields.io/badge/Input-Local_JSONL-0EA5E9?style=flat-square)
+![Output: AstrBot](https://img.shields.io/badge/Output-AstrBot-16A34A?style=flat-square)
+
+> 一个面向本机 Codex CLI 的轻量可观测性插件：把 rollout 生命周期转换成清晰、可追踪的 AstrBot 通知。
+
 这个 AstrBot 插件读取本机 Codex CLI 的 rollout JSONL 事件，在任务正常结束、异常结束或 Codex 进程疑似消失时，向配置的 AstrBot 会话发送通知。
 
 插件只读本机事件文件，不调用 Codex CLI、不修改任务状态，也不依赖外部网络服务。

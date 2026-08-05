@@ -1,5 +1,11 @@
 # sub2api 渠道余额与倍率监控插件
 
+![Operations](https://img.shields.io/badge/OPERATIONS-0284C7?style=flat-square)
+![Source: PostgreSQL](https://img.shields.io/badge/Source-PostgreSQL-0F766E?style=flat-square)
+![Alerts: AstrBot](https://img.shields.io/badge/Alerts-AstrBot-16A34A?style=flat-square)
+
+> 面向自托管渠道的运营可观测性：用余额阈值和倍率变化把需要处理的上游风险转成 AstrBot 告警。
+
 从 sub2api PostgreSQL 数据库读取启用账号，按账号命名规则识别上游渠道，定时检查余额并发送低余额告警。同时支持读取 New API/sub2api 分组倍率，发现倍率、分组或描述变化时推送提醒。
 
 ## 功能

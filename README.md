@@ -1,66 +1,125 @@
+<div align="center">
+
+<pre>
+╭──────────────────────────────────────────────╮
+│  ◈  B O T P L U G I N   M A S T E R  ◈       │
+│      AstrBot extensions for daily ops        │
+╰──────────────────────────────────────────────╯
+</pre>
+
 # BotPlugin Master
 
-这个仓库收集了一组自用 AstrBot 插件，当前包含：
+面向自托管 AstrBot 的轻量插件集合，覆盖研究情报、平台可观测性和本地 Agent 运维。
 
-| 插件 | 功能 | 目录 |
-| --- | --- | --- |
-| Zotero arXiv 日报 | 根据 Zotero 文献库画像匹配 arXiv 新论文，并用 AstrBot 配置的 LLM 生成中文论文日报 | `plugins/zotero_arxiv_digest` |
-| sub2api 渠道余额与倍率监控 | 从 sub2api 数据库读取启用账号，监控上游余额、低余额告警和 New API/sub2api 分组倍率变化 | `plugins/sub2api_balance_monitor` |
-| Codex CLI 任务监控 | 读取本机 Codex rollout 事件，通知任务完成、异常结束和疑似进程消失 | `plugins/astrbot_plugin_codex_monitor` |
+![Runtime: AstrBot](https://img.shields.io/badge/Runtime-AstrBot-6D5EF7?style=flat-square)
+![Python: 3.12](https://img.shields.io/badge/Python-3.12-3776AB?style=flat-square&logo=python&logoColor=white)
+![Plugins: 3](https://img.shields.io/badge/Plugins-3-F59E0B?style=flat-square)
+![License: MIT](https://img.shields.io/badge/License-MIT-2EA043?style=flat-square)
 
-## 安装方式
+</div>
 
-任选一种方式安装插件：
+## 项目定位
 
-1. 克隆整个仓库后复制需要的插件目录到 AstrBot 插件目录：
+BotPlugin Master 是一组面向个人和小型自托管部署的 AstrBot 插件。每个插件保持独立目录、独立配置和独立文档，强调清晰的输入边界、可读的告警内容和不提交运行时秘密。
+
+项目当前聚焦三类工作流：
+
+- 研究情报：从 Zotero 兴趣画像中筛选 arXiv 新论文并生成中文日报。
+- 平台运营：监控 sub2api 渠道余额、倍率和异常变化。
+- Agent 运维：监听本机 Codex CLI rollout，及时通知任务完成或异常终止。
+
+## 插件矩阵
+
+| 领域 | 插件 | 能力边界 | 主要依赖 | 文档 |
+| --- | --- | --- | --- | --- |
+| ![Research](https://img.shields.io/badge/RESEARCH-6D5EF7?style=flat-square) | `zotero_arxiv_digest` | Zotero 画像、arXiv 检索、相关性筛选和 LLM 日报 | Zotero API、arXiv API、AstrBot LLM | [插件说明](plugins/zotero_arxiv_digest/README.md) |
+| ![Operations](https://img.shields.io/badge/OPERATIONS-0284C7?style=flat-square) | `sub2api_balance_monitor` | 上游余额、低余额告警、分组倍率变化和会话绑定 | PostgreSQL、上游 HTTP API | [插件说明](plugins/sub2api_balance_monitor/README.md) |
+| ![Agent Ops](https://img.shields.io/badge/AGENT_OPS-F97316?style=flat-square) | `astrbot_plugin_codex_monitor` | rollout 事件、完成通知、异常中断诊断和状态查询 | 本机 Codex CLI sessions、AstrBot 消息平台 | [插件说明](plugins/astrbot_plugin_codex_monitor/README.md) |
+
+## 快速开始
+
+### 1. 获取仓库
 
 ```bash
 git clone git@github.com:GZWSAMA/BotPlugin_Master.git
-cp -r BotPlugin_Master/plugins/zotero_arxiv_digest /opt/AstrBot/data/plugins/
-cp -r BotPlugin_Master/plugins/sub2api_balance_monitor /opt/AstrBot/data/plugins/
-cp -r BotPlugin_Master/plugins/astrbot_plugin_codex_monitor /opt/AstrBot/data/plugins/
+cd BotPlugin_Master
 ```
 
-2. 只下载单个插件目录，然后放到：
+### 2. 安装需要的插件
 
-```text
-/opt/AstrBot/data/plugins/<插件目录名>
+把目标插件目录复制到 AstrBot 的插件目录：
+
+```bash
+cp -r plugins/zotero_arxiv_digest <astrbot-root>/data/plugins/
+cp -r plugins/sub2api_balance_monitor <astrbot-root>/data/plugins/
+cp -r plugins/astrbot_plugin_codex_monitor <astrbot-root>/data/plugins/
 ```
 
-安装后重启 AstrBot。带有 `_conf_schema.json` 的插件会在 AstrBot 数据目录下自动生成运行配置：
+只安装一个插件时，复制对应的一行即可。需要额外依赖的插件在 AstrBot 环境中安装：
 
-```text
-/opt/AstrBot/data/config/<插件名>_config.json
+```bash
+python -m pip install -r <astrbot-root>/data/plugins/zotero_arxiv_digest/requirements.txt
+python -m pip install -r <astrbot-root>/data/plugins/sub2api_balance_monitor/requirements.txt
 ```
 
-插件运行状态通常保存在 `/opt/AstrBot/data/plugin_data/<插件名>/`，具体路径以插件 README 为准。
+Codex 任务监控插件没有额外 Python 依赖。
 
-## 配置教程
+### 3. 配置并重启 AstrBot
 
-- Zotero arXiv 日报：见 `plugins/zotero_arxiv_digest/README.md`
-- sub2api 渠道余额与倍率监控：见 `plugins/sub2api_balance_monitor/README.md`
-- Codex CLI 任务监控：见 `plugins/astrbot_plugin_codex_monitor/README.md`
+每个插件目录都提供脱敏的 `config.example.json`。对使用 `plugin_data` 配置文件的插件，可先复制模板：
 
-每个插件目录都提供了 `config.example.json`。请把示例内容按需复制到 AstrBot 自动生成的 `data/config/<插件名>_config.json` 中修改，不要把真实配置、运行状态或凭据提交到 Git。
+```bash
+mkdir -p <astrbot-root>/data/plugin_data/<plugin-name>
+cp plugins/<plugin-name>/config.example.json <astrbot-root>/data/plugin_data/<plugin-name>/config.json
+```
 
-## 安全说明
+带有 `_conf_schema.json` 的插件由 AstrBot 生成配置文件，应在 WebUI 或生成的 `data/config/<plugin-name>_config.json` 中填写配置。最后重启 AstrBot，并且不要把真实配置覆盖回仓库。
 
-仓库只包含插件源码、依赖声明、文档和脱敏示例配置，不包含：
+## 配置与运行数据
 
-- Zotero API Key
-- sub2api 数据库密码
-- New API/sub2api 登录 token
-- AstrBot 会话 ID
-- 插件运行状态、历史告警或倍率快照
+| 插件 | 配置位置 | 运行数据 |
+| --- | --- | --- |
+| `zotero_arxiv_digest` | `data/plugin_data/zotero_arxiv_digest/config.json` | 日报状态和兴趣画像缓存 |
+| `sub2api_balance_monitor` | `data/plugin_data/sub2api_balance_monitor/config.json` | 告警、倍率和探测快照 |
+| `astrbot_plugin_codex_monitor` | `data/config/astrbot_plugin_codex_monitor_config.json` | `data/plugin_data/astrbot_plugin_codex_monitor/monitor_state.json` |
 
-`.gitignore` 已排除常见运行配置、状态文件、环境变量文件和编译缓存。发布前仍建议执行一次敏感信息检查：
+配置模板只描述结构，不包含真实 API Key、token、密码、会话 ID 或 QQ OpenID。Codex 监控插件还可能读取包含提示词、工具参数和最终回复的 rollout 日志，目标会话必须由部署者显式配置。
+
+## 发布规范
+
+每个插件目录至少应包含：
+
+- `metadata.yaml`：插件名称、版本、作者和专业描述。
+- `README.md`：安装、配置、运行边界和安全说明。
+- `config.example.json`：可复制的脱敏配置模板。
+- `requirements.txt`：只有存在额外依赖时才提供。
+
+禁止提交运行配置、状态文件、日志、缓存、凭据和平台会话标识。提交前建议执行：
 
 ```bash
 rg -n --hidden -S "(api[_-]?key|token|secret|password|Authorization|Bearer|sk-[A-Za-z0-9])" .
 ```
 
-Codex CLI 任务监控插件还会读取本机 rollout 日志；这些日志可能含有提示词、工具参数、路径和最终回复。仓库只提交脱敏配置模板，不提交真实 UMO、rollout JSONL、AstrBot `data/` 目录或插件状态文件。
+## 目录结构
+
+```text
+BotPlugin_Master/
+├── plugins/
+│   ├── astrbot_plugin_codex_monitor/
+│   ├── sub2api_balance_monitor/
+│   └── zotero_arxiv_digest/
+├── .gitignore
+├── LICENSE
+└── README.md
+```
+
+## 安全边界
+
+- 数据源凭据优先通过环境变量或 AstrBot 运行配置提供。
+- 插件只访问其文档中声明的数据源，不把真实运行状态写入仓库。
+- 外部 API、数据库和消息平台失败时，应保留明确的错误信息，不用空数据伪装成功。
+- 任何新插件都应同时更新自己的 README、`metadata.yaml` 和配置模板。
 
 ## License
 
-MIT License. See `LICENSE`.
+MIT License. See [LICENSE](LICENSE).
