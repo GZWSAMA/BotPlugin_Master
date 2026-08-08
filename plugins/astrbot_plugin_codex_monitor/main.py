@@ -1,6 +1,7 @@
 import asyncio
 import json
 import os
+import subprocess
 import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -52,12 +53,27 @@ class CodexMonitorPlugin(Star):
         self.ignore_human_interrupt = bool(
             self.config.get("ignore_human_interrupt", True)
         )
+        self.auto_continue_on_capacity = bool(
+            self.config.get("auto_continue_on_capacity", True)
+        )
+        self.auto_continue_delay_seconds = max(
+            0.0, float(self.config.get("auto_continue_delay_seconds", 3.0))
+        )
+        self.auto_continue_ack_timeout_seconds = max(
+            1.0,
+            float(self.config.get("auto_continue_ack_timeout_seconds", 12.0)),
+        )
         self.data_dir = StarTools.get_data_dir(PLUGIN_NAME)
         self.state_path = self.data_dir / "monitor_state.json"
         self.offsets: dict[str, int] = {}
         self.metadata: dict[str, dict[str, str]] = {}
         self.active_turns: dict[str, ActiveTurn] = {}
         self.notified_event_ids: set[str] = set()
+        self.capacity_retries: dict[str, int] = {}
+        self._retry_tasks: set[asyncio.Task[None]] = set()
+        self._pending_retry_tasks: dict[str, asyncio.Task[None]] = {}
+        self._auto_input_paths: set[str] = set()
+        self._retry_started_events: dict[str, asyncio.Event] = {}
         self._load_state()
         self._monitor_task = asyncio.create_task(self._monitor_loop())
 
@@ -116,10 +132,7 @@ class CodexMonitorPlugin(Star):
         for path in self.sessions_root.rglob("*.jsonl"):
             key = str(path)
             if key not in self.offsets:
-                try:
-                    self.offsets[key] = path.stat().st_size
-                except OSError:
-                    continue
+                self.offsets[key] = path.stat().st_size
                 changed = True
         if changed:
             self._save_state()
@@ -173,6 +186,16 @@ class CodexMonitorPlugin(Star):
         if event_type == "response_item" and payload_type == "message":
             role = payload.get("role")
             if role == "user" and turn_id:
+                path_key = str(path)
+                if path_key in self._auto_input_paths:
+                    self._auto_input_paths.discard(path_key)
+                    started = self._retry_started_events.get(path_key)
+                    if started is not None:
+                        started.set()
+                else:
+                    pending = self._pending_retry_tasks.pop(path_key, None)
+                    if pending is not None and not pending.done():
+                        pending.cancel()
                 prompt = self._extract_message_text(payload)
                 meta = self.metadata.get(str(path), {})
                 self.active_turns[turn_id] = ActiveTurn(
@@ -185,6 +208,14 @@ class CodexMonitorPlugin(Star):
                 )
             return
 
+        if event_type == "event_msg" and payload_type == "task_started":
+            path_key = str(path)
+            if path_key in self._auto_input_paths:
+                started = self._retry_started_events.get(path_key)
+                if started is not None:
+                    started.set()
+            return
+
         if event_type != "event_msg" or not turn_id:
             return
         event_id = f"{payload_type}:{turn_id}"
@@ -194,6 +225,10 @@ class CodexMonitorPlugin(Star):
 
         if payload_type == "task_complete":
             self.active_turns.pop(turn_id, None)
+            if self._is_capacity_error(payload):
+                self.notified_event_ids.add(event_id)
+                await self._handle_capacity_error(path, payload, timestamp)
+                return
             last_message = str(payload.get("last_agent_message") or "").strip()
             if not last_message:
                 if self.notify_unexpected_stop:
@@ -202,6 +237,7 @@ class CodexMonitorPlugin(Star):
                         self._format_empty_task_complete(path, payload, timestamp)
                     )
                 return
+            self.capacity_retries.pop(str(path), None)
             if self.notify_task_complete:
                 self.notified_event_ids.add(event_id)
                 await self._notify(
@@ -219,6 +255,165 @@ class CodexMonitorPlugin(Star):
                 await self._notify(
                     self._format_abnormal_event(path, payload, timestamp)
                 )
+
+    @staticmethod
+    def _is_capacity_error(payload: dict[str, Any]) -> bool:
+        error = payload.get("error")
+        if not isinstance(error, dict):
+            return False
+        info = str(error.get("codex_error_info") or "").lower()
+        message = str(error.get("message") or "").lower()
+        return info == "server_overloaded" or (
+            "selected model is at capacity" in message
+            and "different model" in message
+        )
+
+    async def _handle_capacity_error(
+        self, path: Path, payload: dict[str, Any], timestamp: str
+    ) -> None:
+        key = str(path)
+        attempt = self.capacity_retries.get(key, 0)
+        if not self.auto_continue_on_capacity:
+            if self.notify_unexpected_stop:
+                await self._notify(self._format_capacity_error(path, payload, timestamp, None))
+            return
+        pending = self._pending_retry_tasks.get(key)
+        if pending is not None and not pending.done():
+            return
+        attempt += 1
+        self.capacity_retries[key] = attempt
+        # Keep the backoff bounded without allowing the exponent itself to
+        # overflow now that retries intentionally have no count limit.
+        exponent = min(max(attempt - 1, 0), 10)
+        delay = min(self.auto_continue_delay_seconds * (2**exponent), 300.0)
+        task = asyncio.create_task(self._retry_capacity_turn(path, payload, attempt, delay))
+        self._retry_tasks.add(task)
+        self._pending_retry_tasks[key] = task
+        task.add_done_callback(lambda done: self._on_retry_done(key, done))
+        if self.notify_unexpected_stop:
+            await self._notify(
+                self._format_capacity_error(path, payload, timestamp, attempt)
+                + f"\n将在 {delay:.0f} 秒后自动发送“继续”，等待 Codex 新回合确认。"
+            )
+
+    def _on_retry_done(self, key: str, task: asyncio.Task[None]) -> None:
+        self._retry_tasks.discard(task)
+        if self._pending_retry_tasks.get(key) is task:
+            self._pending_retry_tasks.pop(key, None)
+
+    async def _retry_capacity_turn(
+        self,
+        path: Path,
+        payload: dict[str, Any],
+        attempt: int,
+        delay: float,
+    ) -> None:
+        key = str(path)
+        started = self._retry_started_events.get(key)
+        if started is None:
+            started = asyncio.Event()
+            self._retry_started_events[key] = started
+        try:
+            await asyncio.sleep(delay)
+            target = self._find_codex_tmux_target(path)
+            if target is None:
+                if self.notify_unexpected_stop:
+                    await self._notify(
+                        self._format_capacity_error(path, payload, "", attempt)
+                        + "\n未找到仍在运行的 Codex tmux pane，无法自动继续。"
+                    )
+                return
+            self._auto_input_paths.add(str(path))
+            result = await asyncio.create_subprocess_exec(
+                "tmux", "send-keys", "-t", target, "-l", "继续",
+                stdout=asyncio.subprocess.DEVNULL,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            _, stderr = await result.communicate()
+            if result.returncode != 0:
+                raise RuntimeError(stderr.decode("utf-8", "replace").strip())
+            result = await asyncio.create_subprocess_exec(
+                "tmux", "send-keys", "-t", target, "Enter",
+                stdout=asyncio.subprocess.DEVNULL,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            _, stderr = await result.communicate()
+            if result.returncode != 0:
+                raise RuntimeError(stderr.decode("utf-8", "replace").strip())
+            try:
+                await asyncio.wait_for(
+                    started.wait(), timeout=self.auto_continue_ack_timeout_seconds
+                )
+            except asyncio.TimeoutError:
+                self._auto_input_paths.discard(key)
+                if self.notify_unexpected_stop:
+                    await self._notify(
+                        self._format_capacity_error(path, payload, "", attempt)
+                        + "\n已发送“继续”，但在等待时间内未确认 Codex 新回合开始。"
+                    )
+                return
+        except (OSError, RuntimeError) as error:
+            self._auto_input_paths.discard(str(path))
+            if self.notify_unexpected_stop:
+                await self._notify(
+                    self._format_capacity_error(path, payload, "", attempt)
+                    + f"\n自动继续发送失败: {error}"
+                )
+            return
+        finally:
+            if self._retry_started_events.get(key) is started:
+                self._retry_started_events.pop(key, None)
+            if not started.is_set():
+                self._auto_input_paths.discard(key)
+        if self.notify_unexpected_stop:
+            await self._notify(
+                self._format_capacity_error(path, payload, "", attempt)
+                + f"\n✅ Codex 已接受自动“继续”，新回合已在 pane {target} 开始。"
+            )
+
+    @staticmethod
+    def _find_codex_tmux_target(rollout_path: Path | str) -> str | None:
+        expected = os.path.realpath(str(rollout_path))
+        tty_names: set[str] = set()
+        for entry in Path("/proc").iterdir():
+            if not entry.name.isdigit():
+                continue
+            try:
+                descriptors = list((entry / "fd").iterdir())
+            except OSError:
+                continue
+            holds_rollout = False
+            for descriptor in descriptors:
+                try:
+                    if os.path.realpath(os.readlink(descriptor)) == expected:
+                        holds_rollout = True
+                        break
+                except OSError:
+                    continue
+            if not holds_rollout:
+                continue
+            try:
+                command = Path(entry / "cmdline").read_bytes().replace(b"\0", b" ").decode()
+                tty = os.path.realpath(os.readlink(entry / "fd/0"))
+            except (OSError, UnicodeDecodeError):
+                continue
+            if "codex" in command.lower() and tty.startswith("/dev/pts/"):
+                tty_names.add(tty)
+        if not tty_names:
+            return None
+        try:
+            output = subprocess.check_output(
+                ["tmux", "list-panes", "-a", "-F", "#{pane_tty}\t#{session_name}:#{window_index}.#{pane_index}"],
+                text=True,
+                stderr=subprocess.DEVNULL,
+            )
+        except (OSError, subprocess.CalledProcessError):
+            return None
+        for line in output.splitlines():
+            tty, separator, target = line.partition("\t")
+            if separator and tty in tty_names:
+                return target
+        return None
 
     @staticmethod
     def _extract_message_text(payload: dict[str, Any]) -> str:
@@ -349,6 +544,28 @@ class CodexMonitorPlugin(Star):
             f"原因: {payload.get('reason') or 'unknown'}"
         )
 
+    def _format_capacity_error(
+        self,
+        path: Path,
+        payload: dict[str, Any],
+        timestamp: str,
+        attempt: int | None,
+    ) -> str:
+        error = payload.get("error")
+        message = error.get("message") if isinstance(error, dict) else None
+        suffix = (
+            f"\n自动继续次数: {attempt}（无上限）"
+            if attempt is not None
+            else "\n自动继续未启用"
+        )
+        return (
+            "⚠️ Codex CLI 模型容量不足\n"
+            f"Turn: {payload.get('turn_id', '未知')}\n"
+            f"结束时间: {timestamp or '未知'}\n"
+            f"错误: {message or 'Selected model is at capacity.'}"
+            + suffix
+        )
+
     async def _notify(self, text: str) -> None:
         if not self.target_umo:
             logger.error("%s target_umo is empty", PLUGIN_NAME)
@@ -371,7 +588,44 @@ class CodexMonitorPlugin(Star):
             f"target={self.target_umo}"
         )
 
+    @filter.command("codex自动继续", alias={"codex继续开关"})
+    async def toggle_auto_continue(self, event: AstrMessageEvent, action: str = ""):
+        """Toggle unlimited capacity retries from the configured QQ session."""
+        if self.target_umo and event.unified_msg_origin != self.target_umo:
+            yield event.plain_result("此指令只允许在 Codex 监控配置的 QQ 会话中使用。")
+            return
+
+        normalized = action.strip().lower()
+        if normalized in {"开", "开启", "on", "true", "1"}:
+            self.auto_continue_on_capacity = True
+            result = "已开启"
+        elif normalized in {"关", "关闭", "off", "false", "0"}:
+            self.auto_continue_on_capacity = False
+            result = "已关闭"
+            for task in tuple(self._pending_retry_tasks.values()):
+                task.cancel()
+        elif normalized in {"状态", "status"}:
+            result = "当前为开启" if self.auto_continue_on_capacity else "当前为关闭"
+        elif not normalized:
+            self.auto_continue_on_capacity = not self.auto_continue_on_capacity
+            result = "已开启" if self.auto_continue_on_capacity else "已关闭"
+            if not self.auto_continue_on_capacity:
+                for task in tuple(self._pending_retry_tasks.values()):
+                    task.cancel()
+        else:
+            yield event.plain_result("用法：codex自动继续 [开|关|状态]；不带参数时切换开关。")
+            return
+
+        state = "开启" if self.auto_continue_on_capacity else "关闭"
+        yield event.plain_result(
+            f"Codex 容量错误自动继续：{result}（{state}，重试次数无上限）。"
+        )
+
     async def terminate(self) -> None:
+        for task in tuple(self._retry_tasks):
+            task.cancel()
+        if self._retry_tasks:
+            await asyncio.gather(*self._retry_tasks, return_exceptions=True)
         if self._monitor_task and not self._monitor_task.done():
             self._monitor_task.cancel()
             try:

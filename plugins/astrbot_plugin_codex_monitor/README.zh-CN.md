@@ -8,9 +8,7 @@
 
 > 一个面向本机 Codex CLI 的轻量可观测性插件：把 rollout 生命周期转换成清晰、可追踪的 AstrBot 通知。
 
-这个 AstrBot 插件读取本机 Codex CLI 的 rollout JSONL 事件，在任务正常结束、异常结束或 Codex 进程疑似消失时，向配置的 AstrBot 会话发送通知。
-
-插件只读本机事件文件，不调用 Codex CLI、不修改任务状态，也不依赖外部网络服务。
+这个 AstrBot 插件读取本机 Codex CLI 的 rollout JSONL 事件，在任务正常结束、异常结束或 Codex 进程疑似消失时，向配置的 AstrBot 会话发送通知。遇到模型容量不足时，插件可以向匹配的 Codex tmux pane 发送 `继续`，并等待真实的 `task_started` 事件确认新回合启动后再发送成功提示。
 
 ## 功能
 
@@ -20,6 +18,8 @@
 - 在没有终结事件且关联 rollout 文件不再被 Codex 进程持有时报告疑似异常中断
 - 记录文件偏移和已通知事件，避免重启或轮询造成重复通知
 - 提供 `codex监控状态` 命令查看监控状态
+- 容量错误自动重试不设次数上限，但每个 rollout 同时只保留一个待发送任务
+- 提供 `codex自动继续`（别名 `codex继续开关`）开关自动重试
 
 ## 安装
 
@@ -57,6 +57,9 @@ cp -r plugins/astrbot_plugin_codex_monitor /opt/AstrBot/data/plugins/
 | `notify_task_complete` | 是否通知带有最终摘要的正常完成事件 |
 | `notify_unexpected_stop` | 是否通知空摘要完成、异常中止和疑似进程消失 |
 | `ignore_human_interrupt` | 是否忽略 `turn_aborted` 且 `reason` 为 `interrupted` 的人工中断 |
+| `auto_continue_on_capacity` | 是否在模型容量不足时自动发送 `继续` |
+| `auto_continue_delay_seconds` | 首次自动继续延迟，后续使用有上限的指数退避，默认 3 秒 |
+| `auto_continue_ack_timeout_seconds` | 发送 `继续` 后等待 `task_started` 确认的最长秒数 |
 
 `target_umo` 必须使用当前 AstrBot 平台实际可发送的 UMO。插件不会替用户猜测目标会话，也不会把本机的会话 ID 或 QQ OpenID 写入默认配置。
 
@@ -66,6 +69,16 @@ cp -r plugins/astrbot_plugin_codex_monitor /opt/AstrBot/data/plugins/
 - `event_msg` / `task_complete` 且 `last_agent_message` 为空：异常完成通知，因为没有可交付的最终回复。
 - `event_msg` / `turn_aborted`：按 `ignore_human_interrupt` 和 `notify_unexpected_stop` 配置处理。
 - 活跃任务没有终结事件，且 rollout 文件不再被进程持有超过宽限期：疑似异常中断通知。这个判定是诊断信号，不等同于 Codex 官方错误分类。
+- 容量错误会立即发送等待提示；发送 `继续` 后只有观察到 `task_started` 才发送“新回合已开始”，超时或 tmux 失败会明确报告，不伪造成功状态。
+
+## 命令
+
+```text
+codex自动继续       # 切换开关
+codex自动继续 开    # 开启
+codex自动继续 关    # 关闭并取消等待中的自动重试
+codex自动继续 状态  # 查看状态
+```
 
 插件首次启动时会把已有 JSONL 文件的偏移初始化到文件末尾，因此只处理启动后追加的事件。状态文件被删除后，已有文件仍会从末尾开始监控。
 

@@ -6,5 +6,8 @@
   "process_grace_seconds": 20.0,
   "notify_task_complete": true,
   "notify_unexpected_stop": true,
-  "ignore_human_interrupt": true
+  "ignore_human_interrupt": true,
+  "auto_continue_on_capacity": true,
+  "auto_continue_delay_seconds": 3.0,
+  "auto_continue_ack_timeout_seconds": 12.0
 }

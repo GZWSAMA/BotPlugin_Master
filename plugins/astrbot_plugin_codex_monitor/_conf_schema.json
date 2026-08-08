@@ -6,5 +6,8 @@
   "process_grace_seconds": {"type": "float", "description": "Grace period before reporting a vanished Codex process.", "default": 20.0},
   "notify_task_complete": {"type": "bool", "description": "Notify when a task_complete event is recorded.", "default": true},
   "notify_unexpected_stop": {"type": "bool", "description": "Notify on abnormal abort events or vanished Codex processes.", "default": true},
-  "ignore_human_interrupt": {"type": "bool", "description": "Ignore turn_aborted events whose reason is interrupted.", "default": true}
+  "ignore_human_interrupt": {"type": "bool", "description": "Ignore turn_aborted events whose reason is interrupted.", "default": true},
+  "auto_continue_on_capacity": {"type": "bool", "description": "Automatically send continue after a model capacity error; can also be toggled with the codex自动继续 command.", "default": true},
+  "auto_continue_delay_seconds": {"type": "float", "description": "Initial delay before automatic continue; later attempts use bounded exponential backoff.", "default": 3.0},
+  "auto_continue_ack_timeout_seconds": {"type": "float", "description": "Seconds to wait for task_started before reporting that automatic continue was not confirmed.", "default": 12.0}
 }

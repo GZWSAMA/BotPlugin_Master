@@ -8,9 +8,7 @@
 
 > A lightweight observability plugin for local Codex CLI: it turns rollout lifecycle events into clear, traceable AstrBot notifications.
 
-This AstrBot plugin reads local Codex CLI rollout JSONL events and notifies the configured AstrBot session when a task completes normally, ends unexpectedly, or its Codex process appears to have disappeared.
-
-The plugin is read-only: it does not invoke Codex CLI, change task state, or depend on external network services.
+This AstrBot plugin reads local Codex CLI rollout JSONL events and notifies the configured AstrBot session when a task completes normally, ends unexpectedly, or its Codex process appears to have disappeared. On a model-capacity error it can send `继续` to the matching Codex tmux pane and waits for a real `task_started` event before reporting success.
 
 ## Capabilities
 
@@ -20,6 +18,8 @@ The plugin is read-only: it does not invoke Codex CLI, change task state, or dep
 - Reports a suspected unexpected stop when an active rollout has no terminal event and its file is no longer held by a Codex process.
 - Persists file offsets and notified events to prevent duplicate notifications after polling or restart.
 - Provides the `codex监控状态` command for monitoring status.
+- Automatically retries capacity errors without a count limit while keeping one pending retry per rollout.
+- Provides `codex自动继续` (and `codex继续开关`) to toggle, enable, disable, or inspect automatic retries from the configured session.
 
 ## Installation
 
@@ -57,6 +57,9 @@ Use `config.example.json` as a reference or configure the plugin directly in the
 | `notify_task_complete` | Sends normal-completion notifications that include a final summary. |
 | `notify_unexpected_stop` | Sends notifications for empty-summary completions, aborted turns, and suspected process disappearance. |
 | `ignore_human_interrupt` | Ignores `turn_aborted` events whose `reason` is `interrupted`. |
+| `auto_continue_on_capacity` | Enables automatic `继续` after a model capacity error. |
+| `auto_continue_delay_seconds` | Initial retry delay; later retries use bounded exponential backoff. The default is 3 seconds. |
+| `auto_continue_ack_timeout_seconds` | Maximum wait for a `task_started` confirmation after sending `继续`. |
 
 `target_umo` must be a UMO that the current AstrBot platform can actually deliver to. The plugin does not guess a destination session and never writes local session IDs or QQ OpenIDs into its default configuration.
 
@@ -66,6 +69,16 @@ Use `config.example.json` as a reference or configure the plugin directly in the
 - `event_msg` / `task_complete` with an empty `last_agent_message`: unexpected-completion notification because there is no final response to deliver.
 - `event_msg` / `turn_aborted`: handled according to `ignore_human_interrupt` and `notify_unexpected_stop`.
 - An active task with no terminal event whose rollout file is no longer held by a process beyond the grace period: suspected unexpected-stop notification. This is a diagnostic signal, not an official Codex error classification.
+- A capacity error schedules one retry per rollout. The plugin sends an immediate waiting notice, then sends a success notice only after `task_started`; timeout and tmux failures are reported explicitly.
+
+## Commands
+
+```text
+codex自动继续       # toggle
+codex自动继续 开    # enable
+codex自动继续 关    # disable and cancel pending retry tasks
+codex自动继续 状态  # show state
+```
 
 On first startup, existing JSONL files are initialized at their current end offsets, so only appended events are processed. Deleting the state file still causes existing files to be monitored from their ends.
 
