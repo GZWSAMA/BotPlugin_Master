@@ -13,7 +13,7 @@
 
 ![Runtime: AstrBot](https://img.shields.io/badge/Runtime-AstrBot-6D5EF7?style=flat-square)
 ![Python: 3.12](https://img.shields.io/badge/Python-3.12-3776AB?style=flat-square&logo=python&logoColor=white)
-![Plugins: 3](https://img.shields.io/badge/Plugins-3-F59E0B?style=flat-square)
+![Plugins: 4](https://img.shields.io/badge/Plugins-4-F59E0B?style=flat-square)
 ![License: MIT](https://img.shields.io/badge/License-MIT-2EA043?style=flat-square)
 
 </div>
@@ -29,6 +29,7 @@ BotPlugin Master 是一组面向个人和小型自托管部署的 AstrBot 插件
 - 研究情报：从 Zotero 兴趣画像中筛选 arXiv 新论文并生成中文日报。
 - 平台运营：监控 sub2api 渠道余额、倍率和异常变化。
 - Agent 运维：监听本机 Codex CLI rollout，及时通知任务完成或异常终止。
+- 创作运维：通过 OpenAI 兼容接口生成或编辑奥利图片，并管理每日额度和主人信号重置。
 
 ## 插件矩阵
 
@@ -37,6 +38,7 @@ BotPlugin Master 是一组面向个人和小型自托管部署的 AstrBot 插件
 | ![Research](https://img.shields.io/badge/RESEARCH-6D5EF7?style=flat-square) | `zotero_arxiv_digest` | Zotero 画像、arXiv 检索、相关性筛选和 LLM 日报 | Zotero API、arXiv API、AstrBot LLM | [English](plugins/zotero_arxiv_digest/README.md) · [中文](plugins/zotero_arxiv_digest/README.zh-CN.md) |
 | ![Operations](https://img.shields.io/badge/OPERATIONS-0284C7?style=flat-square) | `sub2api_balance_monitor` | 上游余额、低余额告警、分组倍率变化和会话绑定 | PostgreSQL、上游 HTTP API | [English](plugins/sub2api_balance_monitor/README.md) · [中文](plugins/sub2api_balance_monitor/README.zh-CN.md) |
 | ![Agent Ops](https://img.shields.io/badge/AGENT_OPS-F97316?style=flat-square) | `astrbot_plugin_codex_monitor` | rollout 事件、完成通知、异常中断诊断和状态查询 | 本机 Codex CLI sessions、AstrBot 消息平台 | [English](plugins/astrbot_plugin_codex_monitor/README.md) · [中文](plugins/astrbot_plugin_codex_monitor/README.zh-CN.md) |
+| ![Creative](https://img.shields.io/badge/CREATIVE-DB2777?style=flat-square) | `astrbot_plugin_oli_image_generation` | OpenAI 兼容绘图、图生图、每日额度与主人信号重置 | 图片 API、AstrBot 消息平台 | [English](plugins/astrbot_plugin_oli_image_generation/README.md) · [中文](plugins/astrbot_plugin_oli_image_generation/README.zh-CN.md) |
 
 ## 快速开始
 
@@ -55,6 +57,7 @@ cd BotPlugin_Master
 cp -r plugins/zotero_arxiv_digest <astrbot-root>/data/plugins/
 cp -r plugins/sub2api_balance_monitor <astrbot-root>/data/plugins/
 cp -r plugins/astrbot_plugin_codex_monitor <astrbot-root>/data/plugins/
+cp -r plugins/astrbot_plugin_oli_image_generation <astrbot-root>/data/plugins/
 ```
 
 只安装一个插件时，复制对应的一行即可。需要额外依赖的插件在 AstrBot 环境中安装：
@@ -84,6 +87,7 @@ cp plugins/<plugin-name>/config.example.json <astrbot-root>/data/plugin_data/<pl
 | `zotero_arxiv_digest` | `data/plugin_data/zotero_arxiv_digest/config.json` | 日报状态和兴趣画像缓存 |
 | `sub2api_balance_monitor` | `data/plugin_data/sub2api_balance_monitor/config.json` | 告警、倍率和探测快照 |
 | `astrbot_plugin_codex_monitor` | `data/config/astrbot_plugin_codex_monitor_config.json` | `data/plugin_data/astrbot_plugin_codex_monitor/monitor_state.json` |
+| `astrbot_plugin_oli_image_generation` | `data/config/astrbot_plugin_oli_image_generation_config.json` | `data/plugin_data/astrbot_plugin_oli_image_generation/daily_quota.json` 和生成图片 |
 
 配置模板只描述结构，不包含真实 API Key、token、密码、会话 ID 或 QQ OpenID。Codex 监控插件还可能读取包含提示词、工具参数和最终回复的 rollout 日志，目标会话必须由部署者显式配置。
 
@@ -108,6 +112,7 @@ rg -n --hidden -S "(api[_-]?key|token|secret|password|Authorization|Bearer|sk-[A
 BotPlugin_Master/
 ├── plugins/
 │   ├── astrbot_plugin_codex_monitor/
+│   ├── astrbot_plugin_oli_image_generation/
 │   ├── sub2api_balance_monitor/
 │   └── zotero_arxiv_digest/
 ├── .gitignore

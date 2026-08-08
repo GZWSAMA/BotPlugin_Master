@@ -1,0 +1,47 @@
+{
+  "enabled": {
+    "type": "bool",
+    "description": "Enable image generation for Oli.",
+    "default": true
+  },
+  "platform_id": {
+    "type": "string",
+    "description": "Platform instance ID allowed to use this image API.",
+    "default": "奥利"
+  },
+  "api_base": {
+    "type": "string",
+    "description": "OpenAI-compatible API base URL.",
+    "default": "https://code.omniworldmodel.com/v1"
+  },
+  "origin_ip": {
+    "type": "string",
+    "description": "Optional verified origin IP for api_base. Keeps the HTTPS hostname and certificate validation while bypassing CDN DNS.",
+    "default": ""
+  },
+  "api_key": {
+    "type": "string",
+    "description": "API key for image generation.",
+    "default": ""
+  },
+  "model": {
+    "type": "string",
+    "description": "Image generation model.",
+    "default": "gpt-image-2"
+  },
+  "edit_model": {
+    "type": "string",
+    "description": "Optional model for image-to-image edits; blank uses model.",
+    "default": ""
+  },
+  "size": {
+    "type": "string",
+    "description": "Generated image size.",
+    "default": "1024x1024"
+  },
+  "timeout": {
+    "type": "int",
+    "description": "Image API timeout in seconds.",
+    "default": 300
+  }
+}

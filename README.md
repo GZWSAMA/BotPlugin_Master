@@ -13,7 +13,7 @@ A focused collection of lightweight AstrBot plugins for research intelligence, p
 
 ![Runtime: AstrBot](https://img.shields.io/badge/Runtime-AstrBot-6D5EF7?style=flat-square)
 ![Python: 3.12](https://img.shields.io/badge/Python-3.12-3776AB?style=flat-square&logo=python&logoColor=white)
-![Plugins: 3](https://img.shields.io/badge/Plugins-3-F59E0B?style=flat-square)
+![Plugins: 4](https://img.shields.io/badge/Plugins-4-F59E0B?style=flat-square)
 ![License: MIT](https://img.shields.io/badge/License-MIT-2EA043?style=flat-square)
 
 </div>
@@ -29,6 +29,7 @@ The repository currently covers three workflows:
 - Research intelligence: discover new arXiv papers from a Zotero interest profile and generate a Chinese digest.
 - Platform operations: monitor sub2api channel balances, multipliers, and operational changes.
 - Agent operations: watch local Codex CLI rollout events and notify operators about completion or unexpected termination.
+- Creative operations: generate or edit Oli images with a daily quota and an owner-signal quota reset.
 
 ## Plugin Matrix
 
@@ -37,6 +38,7 @@ The repository currently covers three workflows:
 | ![Research](https://img.shields.io/badge/RESEARCH-6D5EF7?style=flat-square) | zotero_arxiv_digest | Zotero profiling, arXiv retrieval, relevance scoring, and LLM digests | Zotero API, arXiv API, AstrBot LLM | [English](plugins/zotero_arxiv_digest/README.md) · [中文](plugins/zotero_arxiv_digest/README.zh-CN.md) |
 | ![Operations](https://img.shields.io/badge/OPERATIONS-0284C7?style=flat-square) | sub2api_balance_monitor | Upstream balances, low-balance alerts, group multiplier changes, and session binding | PostgreSQL, upstream HTTP APIs | [English](plugins/sub2api_balance_monitor/README.md) · [中文](plugins/sub2api_balance_monitor/README.zh-CN.md) |
 | ![Agent Ops](https://img.shields.io/badge/AGENT_OPS-F97316?style=flat-square) | astrbot_plugin_codex_monitor | Rollout events, completion notifications, unexpected-stop diagnostics, and status queries | Local Codex CLI sessions, AstrBot messaging platform | [English](plugins/astrbot_plugin_codex_monitor/README.md) · [中文](plugins/astrbot_plugin_codex_monitor/README.zh-CN.md) |
+| ![Creative](https://img.shields.io/badge/CREATIVE-DB2777?style=flat-square) | astrbot_plugin_oli_image_generation | OpenAI-compatible image generation, image editing, daily quota, and owner-signal reset | Image API, AstrBot messaging platform | [English](plugins/astrbot_plugin_oli_image_generation/README.md) · [中文](plugins/astrbot_plugin_oli_image_generation/README.zh-CN.md) |
 
 ## Quick Start
 
@@ -55,6 +57,7 @@ Copy the plugin directories you need into the AstrBot plugin directory:
 cp -r plugins/zotero_arxiv_digest <astrbot-root>/data/plugins/
 cp -r plugins/sub2api_balance_monitor <astrbot-root>/data/plugins/
 cp -r plugins/astrbot_plugin_codex_monitor <astrbot-root>/data/plugins/
+cp -r plugins/astrbot_plugin_oli_image_generation <astrbot-root>/data/plugins/
 ```
 
 When installing only one plugin, copy only its corresponding line. Install additional dependencies inside the AstrBot environment:
@@ -84,6 +87,7 @@ Plugins that provide _conf_schema.json use AstrBot-generated configuration. Fill
 | zotero_arxiv_digest | data/plugin_data/zotero_arxiv_digest/config.json | Digest state and interest-profile cache |
 | sub2api_balance_monitor | data/plugin_data/sub2api_balance_monitor/config.json | Alert, multiplier, and probe snapshots |
 | astrbot_plugin_codex_monitor | data/config/astrbot_plugin_codex_monitor_config.json | data/plugin_data/astrbot_plugin_codex_monitor/monitor_state.json |
+| astrbot_plugin_oli_image_generation | data/config/astrbot_plugin_oli_image_generation_config.json | data/plugin_data/astrbot_plugin_oli_image_generation/daily_quota.json and generated images |
 
 Configuration templates describe structure only. They do not contain real API keys, tokens, passwords, session IDs, or QQ OpenIDs. The Codex monitor may also read rollout logs containing prompts, tool arguments, and final replies; configure its target session explicitly and only send data to a session you control.
 
@@ -108,6 +112,7 @@ rg -n --hidden -S "(api[_-]?key|token|secret|password|Authorization|Bearer|sk-[A
 BotPlugin_Master/
 ├── plugins/
 │   ├── astrbot_plugin_codex_monitor/
+│   ├── astrbot_plugin_oli_image_generation/
 │   ├── sub2api_balance_monitor/
 │   └── zotero_arxiv_digest/
 ├── .gitignore

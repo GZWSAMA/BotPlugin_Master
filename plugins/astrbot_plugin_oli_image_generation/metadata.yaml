@@ -1,0 +1,7 @@
+name: astrbot_plugin_oli_image_generation
+desc: Generates images for the Oli platform through an OpenAI-compatible image API.
+short_desc: Oli image generation.
+version: 0.2.0
+author: GZWSAMA
+support_platforms:
+  - qq_official

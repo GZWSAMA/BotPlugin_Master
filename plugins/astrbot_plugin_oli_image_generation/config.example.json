@@ -1,0 +1,11 @@
+{
+  "enabled": true,
+  "platform_id": "奥利",
+  "api_base": "https://example.com/v1",
+  "origin_ip": "",
+  "api_key": "",
+  "model": "gpt-image-2",
+  "edit_model": "",
+  "size": "1024x1024",
+  "timeout": 300
+}
